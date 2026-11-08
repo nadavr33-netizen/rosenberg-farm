@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { Session } from "@supabase/supabase-js";
 import { browserClient, configured } from "@/lib/supabase";
@@ -11,7 +11,8 @@ import SettingsTab from "./SettingsTab";
 import type { AdminData } from "./types";
 
 export default function AdminApp() {
-  const sb = browserClient();
+  // Created only in the browser and only when the site is connected to Supabase.
+  const sb = useMemo(() => (configured && typeof window !== "undefined" ? browserClient() : null), []);
   const [lang, setLang] = useLang();
   const t = (k: string) => T[lang][k];
   const [session, setSession] = useState<Session | null | undefined>(undefined);
@@ -28,13 +29,14 @@ export default function AdminApp() {
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!configured) return;
+    if (!sb) return;
     sb.auth.getSession().then(({ data }) => setSession(data.session));
     const { data: sub } = sb.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => sub.subscription.unsubscribe();
   }, [sb]);
 
   const load = useCallback(async () => {
+    if (!sb) return;
     setLoadErr("");
     await sb.rpc("expire_holds");
     const [fs, ar, pr, di, st, or, ad] = await Promise.all([
@@ -52,7 +54,7 @@ export default function AdminApp() {
   }, [sb]);
 
   useEffect(() => {
-    if (!session) { setIsAdmin(null); setData(null); return; }
+    if (!session || !sb) { setIsAdmin(null); setData(null); return; }
     sb.rpc("is_admin").then(({ data }) => {
       setIsAdmin(Boolean(data));
       if (data) load();
@@ -61,7 +63,7 @@ export default function AdminApp() {
 
   const sendCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email.trim()) return;
+    if (!sb || !email.trim()) return;
     setBusy(true); setMsg("");
     const { error } = await sb.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
@@ -72,6 +74,7 @@ export default function AdminApp() {
   };
   const verify = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!sb) return;
     setBusy(true); setMsg("");
     const { error } = await sb.auth.verifyOtp({ email: email.trim().toLowerCase(), token: code.trim(), type: "email" });
     setBusy(false);
@@ -117,7 +120,7 @@ export default function AdminApp() {
         {header}
         <main className="login">
           <p className="statusbox warn">{t("notAdmin")}</p>
-          <button className="ghost" onClick={() => sb.auth.signOut()}>{t("signOut")}</button>
+          <button className="ghost" onClick={() => sb?.auth.signOut()}>{t("signOut")}</button>
         </main>
       </>
     );
@@ -129,7 +132,7 @@ export default function AdminApp() {
       <main className="wide">
         <div className="row" style={{ justifyContent: "flex-end", gap: 12 }}>
           <Link href="/" target="_blank" className="link">{t("viewSite")}</Link>
-          <button className="link" onClick={() => sb.auth.signOut()}>{t("signOut")} ({session.user.email})</button>
+          <button className="link" onClick={() => sb?.auth.signOut()}>{t("signOut")} ({session.user.email})</button>
         </div>
         {loadErr ? <p className="statusbox warn">{loadErr}</p> : null}
         {!data ? <p>{t("loading")}</p> : tab === "orders"

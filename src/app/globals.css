@@ -164,7 +164,7 @@ form.f{display:flex;flex-direction:column;gap:12px;background:var(--surface);bor
 
 /* admin */
 .wide{max-width:1080px;margin:0 auto;padding-top:18px;display:flex;flex-direction:column;gap:22px}
-.adm-head{display:flex;justify-content:space-between;align-items:end;gap:12px;flex-wrap:wrap}
+.adm-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap}
 .adm-head h1{font-size:30px}
 .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
 .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
